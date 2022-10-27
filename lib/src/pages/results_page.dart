@@ -1,9 +1,11 @@
 import 'package:dont_risk_it_ui2/src/constants/colors_constants.dart';
 import 'package:dont_risk_it_ui2/src/constants/layout_constants/results_page_layout_constants.dart';
+import 'package:dont_risk_it_ui2/src/constants/style_constants.dart';
 import 'package:dont_risk_it_ui2/src/engines/engine.dart';
 import 'package:dont_risk_it_ui2/src/ui_elements/custom_widgets/mutual/button_enums.dart';
 import 'package:dont_risk_it_ui2/src/ui_elements/custom_widgets/mutual/my_title.dart';
 import 'package:dont_risk_it_ui2/src/ui_elements/custom_widgets/mutual/progress_indicator/progress_sign.dart';
+import 'package:dont_risk_it_ui2/src/ui_elements/custom_widgets/results_page/action_feedback_indicator.dart';
 import 'package:dont_risk_it_ui2/src/ui_elements/custom_widgets/results_page/in_tank_value_label.dart';
 import 'package:dont_risk_it_ui2/src/ui_elements/custom_widgets/results_page/label.dart';
 import 'package:dont_risk_it_ui2/src/ui_elements/custom_widgets/results_page/label_with_text_field.dart';
@@ -59,11 +61,6 @@ class _ResultsPageState extends State<ResultsPage> {
     super.initState();
   }
 
-  void _leavingPageFunction() {
-    Navigator.popUntil(
-        context, ModalRoute.withName(Navigator.defaultRouteName));
-  }
-
   void onTanksLeftEditTF(int newVal) {
     var newEngine = ClassicEngine(
       atk: atkVal,
@@ -83,6 +80,27 @@ class _ResultsPageState extends State<ResultsPage> {
       return true;
     }
     return false;
+  }
+
+  void indicateStateChanged(atkOld, atkNew, defOld, defNew) {
+    if (atkOld != atkNew) {
+      atkTanksLostInTurn = atkOld - atkNew;
+      atkLostTanksIndicator = !atkLostTanksIndicator;
+      Future.delayed(const Duration(milliseconds: 500), () {
+        setState(() {
+          atkLostTanksIndicator = !atkLostTanksIndicator;
+        });
+      });
+    }
+    if (defOld != defNew) {
+      defTanksLostInTurn = defOld - defNew;
+      defLostTanksIndicator = !defLostTanksIndicator;
+      Future.delayed(const Duration(milliseconds: 500), () {
+        setState(() {
+          defLostTanksIndicator = !defLostTanksIndicator;
+        });
+      });
+    }
   }
 
   void updateButtonOnPressFunc(int buttonVal) {
@@ -133,6 +151,7 @@ class _ResultsPageState extends State<ResultsPage> {
       return;
     }
     setState(() {
+      indicateStateChanged(atkVal, newAtkVal, defVal, newDefVal);
       atkVal = newAtkVal;
       defVal = newDefVal;
       winPercentage = engineWin.getResult(newAtkVal, newDefVal);
@@ -141,9 +160,10 @@ class _ResultsPageState extends State<ResultsPage> {
     });
   }
 
-  String _stringRepresentation(double x) {
-    return "${x.toStringAsPrecision(3)}%";
-  }
+  bool atkLostTanksIndicator = false;
+  bool defLostTanksIndicator = false;
+  int atkTanksLostInTurn = 0;
+  int defTanksLostInTurn = 0;
 
   @override
   Widget build(BuildContext context) {
@@ -239,8 +259,34 @@ class _ResultsPageState extends State<ResultsPage> {
                       layout.fromProgressSignToTankTop +
                       layout.tankHeight +
                       layout.fromTankBottomToWinPercentageTop,
+                  left: layout.fromInTankValLabelToTankSide,
+                  child: ActionFeedbackIndicator(
+                    layout: layout,
+                    tanksLostIndicator: atkLostTanksIndicator,
+                    numOfTanksLost: atkTanksLostInTurn,
+                  ),
+                ),
+                Positioned(
+                  top: layout.titleHeight +
+                      layout.progressSighHeight +
+                      layout.fromProgressSignToTankTop +
+                      layout.tankHeight +
+                      layout.fromTankBottomToWinPercentageTop,
+                  right: layout.fromInTankValLabelToTankSide,
+                  child: ActionFeedbackIndicator(
+                    layout: layout,
+                    tanksLostIndicator: defLostTanksIndicator,
+                    numOfTanksLost: defTanksLostInTurn,
+                  ),
+                ),
+                Positioned(
+                  top: layout.titleHeight +
+                      layout.progressSighHeight +
+                      layout.fromProgressSignToTankTop +
+                      layout.tankHeight +
+                      layout.fromTankBottomToWinPercentageTop,
                   child: Label(
-                    text: _stringRepresentation(winPercentage),
+                    text: "${winPercentage.toStringAsPrecision(3)}%",
                     height: layout.winPercentageLabelHeight,
                     width: layout.screenWidthWithPadding,
                   ),
@@ -268,7 +314,7 @@ class _ResultsPageState extends State<ResultsPage> {
                       layout.winLabelHeight +
                       layout.fromWinLabelToWinPercentageLabel,
                   child: Label(
-                    text: _stringRepresentation(winWithLeftPercentage),
+                    text: "${winWithLeftPercentage.toStringAsPrecision(3)}%",
                     height: layout.winPercentageLabelHeight,
                     width: layout.screenWidthWithPadding,
                   ),
@@ -329,7 +375,10 @@ class _ResultsPageState extends State<ResultsPage> {
                   child: ResetButton(
                     height: layout.resetButtonHeight,
                     width: layout.screenWidthWithPadding,
-                    onPressFunc: _leavingPageFunction,
+                    onPressFunc: () => {
+                      Navigator.popUntil(context,
+                          ModalRoute.withName(Navigator.defaultRouteName))
+                    },
                   ),
                 ),
               ],
