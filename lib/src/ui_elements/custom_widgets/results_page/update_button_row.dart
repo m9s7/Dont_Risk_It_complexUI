@@ -4,7 +4,7 @@ import 'package:flutter/material.dart';
 
 class UpdateButtonRow extends StatelessWidget {
   final ResultsPageLayoutConstants layout;
-  final Function onPressFunc;
+  final Function(int)? onPressFunc;
 
   const UpdateButtonRow(
       {super.key, required this.onPressFunc, required this.layout});

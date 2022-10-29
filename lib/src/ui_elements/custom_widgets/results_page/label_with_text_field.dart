@@ -41,7 +41,7 @@ class LabelWithTextField extends StatelessWidget {
         ),
         SizedBox(
           height: layout.winLabelHeight,
-          width: 1.5 * layout.winLabelHeight,
+          width: 1.65 * layout.winLabelHeight,
           child: AutoSizeTextField(
             minFontSize: 1,
             onSubmitted: (text) =>

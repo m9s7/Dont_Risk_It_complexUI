@@ -1,18 +1,19 @@
+import 'dart:async';
+import 'package:flutter/material.dart';
+import 'package:flutter_svg/flutter_svg.dart';
+import 'package:rive/rive.dart';
+
 import 'package:dont_risk_it_ui2/src/constants/colors_constants.dart';
 import 'package:dont_risk_it_ui2/src/constants/layout_constants/results_page_layout_constants.dart';
-import 'package:dont_risk_it_ui2/src/constants/style_constants.dart';
 import 'package:dont_risk_it_ui2/src/engines/engine.dart';
 import 'package:dont_risk_it_ui2/src/ui_elements/custom_widgets/mutual/button_enums.dart';
 import 'package:dont_risk_it_ui2/src/ui_elements/custom_widgets/mutual/my_title.dart';
 import 'package:dont_risk_it_ui2/src/ui_elements/custom_widgets/mutual/progress_indicator/progress_sign.dart';
-import 'package:dont_risk_it_ui2/src/ui_elements/custom_widgets/results_page/action_feedback_indicator.dart';
 import 'package:dont_risk_it_ui2/src/ui_elements/custom_widgets/results_page/in_tank_value_label.dart';
 import 'package:dont_risk_it_ui2/src/ui_elements/custom_widgets/results_page/label.dart';
 import 'package:dont_risk_it_ui2/src/ui_elements/custom_widgets/results_page/label_with_text_field.dart';
 import 'package:dont_risk_it_ui2/src/ui_elements/custom_widgets/results_page/reset_button.dart';
 import 'package:dont_risk_it_ui2/src/ui_elements/custom_widgets/results_page/update_button_row.dart';
-import 'package:flutter/material.dart';
-import 'package:flutter_svg/flutter_svg.dart';
 
 class ResultsPage extends StatefulWidget {
   final ResultPageParameters inputParameters;
@@ -34,6 +35,12 @@ class _ResultsPageState extends State<ResultsPage> {
 
   late double winPercentage;
   late double winWithLeftPercentage;
+
+  int atkTanksLost = 0;
+  int defTanksLost = 0;
+  bool isAtkAnimationPlaying = false;
+  bool isDefAnimationPlaying = false;
+  bool areButtonsDisabled = false;
 
   @override
   void initState() {
@@ -58,6 +65,12 @@ class _ResultsPageState extends State<ResultsPage> {
     );
     winWithLeftPercentage = engineWinWithTanksLeft.getResult(atkVal, defVal);
 
+    atkTanksLost = 0;
+    defTanksLost = 0;
+    isAtkAnimationPlaying = false;
+    isDefAnimationPlaying = false;
+    areButtonsDisabled = false;
+
     super.initState();
   }
 
@@ -75,79 +88,79 @@ class _ResultsPageState extends State<ResultsPage> {
     });
   }
 
-  bool isBattleOver(int atk, int def) {
-    if (atk <= 1 || def <= 0) {
-      return true;
-    }
-    return false;
-  }
-
-  void indicateStateChanged(atkOld, atkNew, defOld, defNew) {
+  indicateStateChanged(atkOld, atkNew, defOld, defNew) {
     if (atkOld != atkNew) {
-      atkTanksLostInTurn = atkOld - atkNew;
-      atkLostTanksIndicator = !atkLostTanksIndicator;
-      Future.delayed(const Duration(milliseconds: 500), () {
+      isAtkAnimationPlaying = true;
+      atkTanksLost = atkOld - atkNew;
+      Timer(const Duration(milliseconds: 1100), () {
         setState(() {
-          atkLostTanksIndicator = !atkLostTanksIndicator;
+          isAtkAnimationPlaying = false;
         });
       });
     }
     if (defOld != defNew) {
-      defTanksLostInTurn = defOld - defNew;
-      defLostTanksIndicator = !defLostTanksIndicator;
-      Future.delayed(const Duration(milliseconds: 500), () {
+      isDefAnimationPlaying = true;
+      defTanksLost = defOld - defNew;
+      Timer(const Duration(milliseconds: 1100), () {
         setState(() {
-          defLostTanksIndicator = !defLostTanksIndicator;
+          isDefAnimationPlaying = false;
         });
       });
     }
   }
 
-  void updateButtonOnPressFunc(int buttonVal) {
-    if (isBattleOver(atkVal, defVal)) {
-      const AlertDialog(
-        title: Text("Battle is over"),
+  void battleIsOverAction(newAtkVal, newDefVal) {
+    areButtonsDisabled = true;
+    if (newAtkVal <= 1) {
+      setState(() {
+        indicateStateChanged(atkVal, 1, defVal, newDefVal);
+        atkVal = 1;
+        defVal = newDefVal;
+        winPercentage = 0.0;
+        winWithLeftPercentage = 0.0;
+      });
+      showDialog(
+        context: context,
+        builder: (_) => const AlertDialog(
+          title: Text("Battle over, you lost! :)"),
+        ),
       );
+    } else {
+      setState(() {
+        indicateStateChanged(atkVal, newAtkVal, defVal, 0);
+        atkVal = newAtkVal;
+        defVal = 0;
+        winPercentage = 100.0;
+        winWithLeftPercentage = newAtkVal >= tanksLeftVal ? 100.0 : 0.0;
+      });
+      showDialog(
+        context: context,
+        builder: (_) => const AlertDialog(
+          title: Text("Battle over, you won! :)"),
+        ),
+      );
+    }
+
+    return;
+  }
+
+  void updateButtonOnPressFunc(int buttonVal) {
+    if (ClassicEngine.isBattleOver(atkVal, defVal)) {
+      battleIsOverAction(atkVal, defVal);
       return;
     }
-    int k = engineWin.getNumOfTotalTanksToBeLostInOneDiceRoll(atkVal, defVal);
+    int k = ClassicEngine.getNumOfTotalTanksToBeLostInOneDiceRoll(
+        atkVal - 1, defVal);
     buttonVal = buttonVal > k ? k : buttonVal;
 
-    var atkToLose = buttonVal;
-    var defToLose = k - atkToLose;
+    int atkToLose = buttonVal;
+    int defToLose = k - atkToLose;
 
-    var newAtkVal = atkVal - atkToLose;
-    var newDefVal = defToLose <= 0 ? defVal : defVal - defToLose;
+    int newAtkVal = atkVal - atkToLose;
+    int newDefVal = defToLose <= 0 ? defVal : defVal - defToLose;
 
-    if (isBattleOver(newAtkVal, newDefVal)) {
-      if (newAtkVal <= 1) {
-        setState(() {
-          atkVal = 1;
-          defVal = newDefVal;
-          winPercentage = 0.0;
-          winWithLeftPercentage = 0.0;
-        });
-        showDialog(
-          context: context,
-          builder: (_) => const AlertDialog(
-            title: Text("Battle over, you lost! :)"),
-          ),
-        );
-      } else {
-        setState(() {
-          atkVal = newAtkVal;
-          defVal = 0;
-          winPercentage = 100.0;
-          winWithLeftPercentage = newAtkVal >= tanksLeftVal ? 100.0 : 0.0;
-        });
-        showDialog(
-          context: context,
-          builder: (_) => const AlertDialog(
-            title: Text("Battle over, you won! :)"),
-          ),
-        );
-      }
-
+    if (ClassicEngine.isBattleOver(newAtkVal, newDefVal)) {
+      battleIsOverAction(newAtkVal, newDefVal);
       return;
     }
     setState(() {
@@ -159,11 +172,6 @@ class _ResultsPageState extends State<ResultsPage> {
           engineWinWithTanksLeft.getResult(newAtkVal, newDefVal);
     });
   }
-
-  bool atkLostTanksIndicator = false;
-  bool defLostTanksIndicator = false;
-  int atkTanksLostInTurn = 0;
-  int defTanksLostInTurn = 0;
 
   @override
   Widget build(BuildContext context) {
@@ -253,32 +261,46 @@ class _ResultsPageState extends State<ResultsPage> {
                     width: layout.inTankValLabelWidth,
                   ),
                 ),
-                Positioned(
-                  top: layout.titleHeight +
-                      layout.progressSighHeight +
-                      layout.fromProgressSignToTankTop +
-                      layout.tankHeight +
-                      layout.fromTankBottomToWinPercentageTop,
-                  left: layout.fromInTankValLabelToTankSide,
-                  child: ActionFeedbackIndicator(
-                    layout: layout,
-                    tanksLostIndicator: atkLostTanksIndicator,
-                    numOfTanksLost: atkTanksLostInTurn,
-                  ),
-                ),
-                Positioned(
-                  top: layout.titleHeight +
-                      layout.progressSighHeight +
-                      layout.fromProgressSignToTankTop +
-                      layout.tankHeight +
-                      layout.fromTankBottomToWinPercentageTop,
-                  right: layout.fromInTankValLabelToTankSide,
-                  child: ActionFeedbackIndicator(
-                    layout: layout,
-                    tanksLostIndicator: defLostTanksIndicator,
-                    numOfTanksLost: defTanksLostInTurn,
-                  ),
-                ),
+                isAtkAnimationPlaying
+                    ? Positioned(
+                        top: layout.titleHeight +
+                            layout.progressSighHeight +
+                            layout.fromProgressSignToTankTop +
+                            layout.tankHeight,
+                        left: layout.fromInTankValLabelToTankSide,
+                        child: SizedBox(
+                          height: layout.fromTankBottomToWinPercentageTop +
+                              layout.winPercentageLabelHeight +
+                              layout.winLabelHeight +
+                              layout.fromWinLabelToWinPercentageLabel +
+                              layout.winPercentageLabelHeight,
+                          width: layout.inTankValLabelWidth * 2,
+                          child: RiveAnimation.asset(
+                            "assets/animations/green_tank_animation_loop_$atkTanksLost.riv",
+                          ),
+                        ),
+                      )
+                    : const SizedBox(),
+                isDefAnimationPlaying
+                    ? Positioned(
+                        top: layout.titleHeight +
+                            layout.progressSighHeight +
+                            layout.fromProgressSignToTankTop +
+                            layout.tankHeight,
+                        right: layout.fromInTankValLabelToTankSide,
+                        child: SizedBox(
+                          height: layout.fromTankBottomToWinPercentageTop +
+                              layout.winPercentageLabelHeight +
+                              layout.winLabelHeight +
+                              layout.fromWinLabelToWinPercentageLabel +
+                              layout.winPercentageLabelHeight,
+                          width: layout.inTankValLabelWidth * 2,
+                          child: RiveAnimation.asset(
+                            "assets/animations/red_tank_animation_loop_$defTanksLost.riv",
+                          ),
+                        ),
+                      )
+                    : const SizedBox(),
                 Positioned(
                   top: layout.titleHeight +
                       layout.progressSighHeight +
@@ -367,7 +389,11 @@ class _ResultsPageState extends State<ResultsPage> {
                       layout.fromResetButtonToButtonBar,
                   child: UpdateButtonRow(
                     layout: layout,
-                    onPressFunc: updateButtonOnPressFunc,
+                    onPressFunc: isAtkAnimationPlaying ||
+                            isDefAnimationPlaying ||
+                            areButtonsDisabled
+                        ? null
+                        : updateButtonOnPressFunc,
                   ),
                 ),
                 Positioned(

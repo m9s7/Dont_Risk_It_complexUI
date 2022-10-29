@@ -8,7 +8,7 @@ import 'package:flutter/material.dart';
 class UpdateButton extends StatelessWidget {
   final ResultsPageLayoutConstants layout;
   final int buttonVal;
-  final Function onPressFunc;
+  final Function(int)? onPressFunc;
 
   const UpdateButton({
     super.key,
@@ -27,6 +27,11 @@ class UpdateButton extends StatelessWidget {
         shape: RoundedRectangleBorder(
           borderRadius: BorderRadius.circular(10.0),
         ),
+        onPressed: onPressFunc == null
+            ? null
+            : () {
+                onPressFunc!(buttonVal);
+              },
         child: SizedBox(
           height: layout.inTankValLabelHeight * 1.2,
           width: layout.inTankValLabelWidth * 1.2,
@@ -39,9 +44,6 @@ class UpdateButton extends StatelessWidget {
             ),
           ),
         ),
-        onPressed: () {
-          onPressFunc(buttonVal);
-        },
       ),
     );
   }

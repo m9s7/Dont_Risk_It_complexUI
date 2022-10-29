@@ -94,7 +94,7 @@ class ClassicEngine {
     throw Exception('_numberOfAtkDice gone terribly wrong.');
   }
 
-  int getNumOfTotalTanksToBeLostInOneDiceRoll(
+  static int getNumOfTotalTanksToBeLostInOneDiceRoll(
     int numOfAtkDice,
     int numOfDefDice,
   ) {
@@ -210,5 +210,12 @@ class ClassicEngine {
       return 0.0;
     }
     return _atkWinChanceTable[atk - tanksLeft][def] * 100;
+  }
+
+  static bool isBattleOver(int atk, int def) {
+    if (atk <= 1 || def <= 0) {
+      return true;
+    }
+    return false;
   }
 }
