@@ -12,8 +12,8 @@ Screen 2:
 - Enter the number of tanks you would prefer to have left on the field after the battle.
 
 Screen 3:
-- after each diceroll, update your win probability by selectiong how many tanks you lost on that dice roll.
-- you can change how many tanks you would prefer to have left on the field as the battle goes on, by clicking on the current number of tanks left.
+- After each diceroll, update your win probability by selectiong how many tanks you lost on that dice roll.
+- You can change how many tanks you would prefer to have left on the field as the battle goes on, by clicking on the current number of tanks left.
 
 Sandwitch app bar is there just for aesthetics, I dont plan on developing the app further.
 
